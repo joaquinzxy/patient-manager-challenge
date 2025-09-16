@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: nestjs-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: patient_manager
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d patient_manager"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # NestJS Backend API
+  nestjs-api:
+    build:
+      context: .
+      dockerfile: 'backend/Dockerfile'
+    container_name: nestjs-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      # Override specific values for Docker environment
+      - DATABASE_HOST=postgres
+      - FRONTEND_URL=http://localhost:3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/package.json:/app/package.json
+      - ./backend/pnpm-lock.yaml:/app/pnpm-lock.yaml
+      - ./backend/tsconfig.json:/app/tsconfig.json
+      - ./backend/tsconfig.build.json:/app/tsconfig.build.json
+      - ./backend/nest-cli.json:/app/nest-cli.json
+      - ./backend/eslint.config.mjs:/app/eslint.config.mjs
+      - /app/node_modules
+    networks:
+      - app-network
+
+  # React Frontend
+  react-frontend:
+    image: node:20-alpine
+    container_name: react-frontend
+    restart: unless-stopped
+    working_dir: /app
+    ports:
+      - "3001:5173"
+    environment:
+      - VITE_API_URL=http://localhost:3000/api/v1
+    depends_on:
+      - nestjs-api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - app-network
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge
