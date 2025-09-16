@@ -63,3 +63,9 @@ Implementar AWS SQS para manejar las notificaciones de manera más eficiente con
 
 ### Testing unitario
 Implementar testing en servicios y controladores.
+
+### Authentication & Roles
+Sistema de login por JWT para control de acceso y roles para limitar acciones.
+
+### Prometheus & Grafana
+Para medir métricas del contenedor y consumos de la API.
